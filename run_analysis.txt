@@ -1,0 +1,40 @@
+library(dplyr)
+zUrl <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+zFile <- "UCI HAR Dataset.zip"
+download.file(zUrl, zFile, mode = "wb")
+
+
+tSub <- read.table(file.path(dataPath, "train", "subject_train.txt"))
+tVal <- read.table(file.path(dataPath, "train", "X_train.txt"))
+tActiv <- read.table(file.path(dataPath, "train", "y_train.txt"))
+teSub <- read.table(file.path(dataPath, "test", "subject_test.txt"))
+teVal <- read.table(file.path(dataPath, "test", "X_test.txt"))
+teActiv <- read.table(file.path(dataPath, "test", "y_test.txt"))
+features <- read.table(file.path(dataPath, "features.txt"), as.is = TRUE)
+activities <- read.table(file.path(dataPath, "activity_labels.txt"))
+colnames(activities) <- c("activityId", "activityLabel")
+
+humanActivity <- rbind(cbind(tSub, tVal, tActiv),cbind(teSub, teVal, teActiv))
+rm(tSub, tVal, tActiv, teSub, teVal, teActiv)
+colnames(humanActivity) <- c("subject", features[, 2], "activity")
+ 
+columnsToKeep <- grepl("subject|activity|mean|std", colnames(humanActivity))
+humanActivity <- humanActivity[, columnsToKeep]
+
+humanActivity$activity <- factor(humanActivity$activity, levels = activities[, 1], labels = activities[, 2])
+humanActivityCols <- colnames(humanActivity)
+humanActivityCols <- gsub("[\\(\\)-]", "", humanActivityCols)
+humanActivityCols <- gsub("^f", "frequencyDomain", humanActivityCols)
+humanActivityCols <- gsub("^t", "timeDomain", humanActivityCols)
+humanActivityCols <- gsub("Acc", "Accelerometer", humanActivityCols)
+humanActivityCols <- gsub("Gyro", "Gyroscope", humanActivityCols)
+humanActivityCols <- gsub("Mag", "Magnitude", humanActivityCols)
+humanActivityCols <- gsub("Freq", "Frequency", humanActivityCols)
+humanActivityCols <- gsub("mean", "Mean", humanActivityCols)
+humanActivityCols <- gsub("std", "StandardDeviation", humanActivityCols)
+humanActivityCols <- gsub("BodyBody", "Body", humanActivityCols)
+colnames(humanActivity) <- humanActivityCols
+
+humanActivityMeans <- humanActivity %>% group_by(subject, activity) %>% summarise_each(funs(mean))
+
+write.table(humanActivityMeans, "tidy_data.txt", row.names = FALSE,quote = FALSE)
